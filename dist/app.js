@@ -67,9 +67,10 @@ for(const [key,item] of Object.entries(exhibits)){
 
 const canvas=document.getElementById('museum-canvas'), ctx=canvas.getContext('2d'), panelLayer=document.getElementById('panel-layer');
 const usedPanels=new Set();
-const camera={x:0,z:.7,yaw:0};
+const camera={x:0,z:.7,yaw:0,pitch:0};
 const entrySign={x:0,z:4.65,halfWidth:.55,bottom:.56,top:2.72,clearanceX:.94,clearanceZ:.72};
 const keys=new Set();
+const joystick={x:0,forward:0,pointerId:null};
 let viewW=0,viewH=0,dpr=1,active=null,lastFocusId=null,renderMarkers=[],lastDraw=0,framePending=false,dragStart=null,dragMoved=false,modalSource=null,activeTab='letter';
 let visualMode='historical',imagePage=0;
 const intro=document.getElementById('intro'), contentDialog=document.getElementById('content-dialog'), indexDialog=document.getElementById('index-dialog');
@@ -82,7 +83,7 @@ function resize(){viewW=canvas.clientWidth;viewH=canvas.clientHeight;const pixel
 window.addEventListener('resize',resize);resize();
 function cameraPoint(p){let dx=p.x-camera.x,dz=p.z-camera.z,c=Math.cos(camera.yaw),s=Math.sin(camera.yaw);return{x:dx*c-dz*s,y:p.y-1.62,z:dx*s+dz*c}}
 function clipPolygon(points){let out=[];for(let i=0;i<points.length;i++){let a=points[i],b=points[(i+1)%points.length],insideA=a.z>.12,insideB=b.z>.12;if(insideA)out.push(a);if(insideA!==insideB){let t=(.12-a.z)/(b.z-a.z);out.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:.12})}}return out}
-function projection(v){const focal=Math.min(viewW*.86,viewH*1.28);return{x:viewW/2+v.x/v.z*focal,y:viewH*.55-v.y/v.z*focal}}
+function projection(v){const focal=Math.min(viewW*.86,viewH*1.28);return{x:viewW/2+v.x/v.z*focal,y:viewH*(.55+camera.pitch)-v.y/v.z*focal}}
 function worldProjection(p){let c=cameraPoint(p);return c.z>.12?{...projection(c),depth:c.z}:null}
 function quad(points,fill,stroke,kind='surface',label=''){let v=points.map(cameraPoint);if(v.every(p=>p.z<=.12)||v.every(p=>p.z>28))return null;let clipped=clipPolygon(v);if(clipped.length<3)return null;let screen=clipped.map(projection);if(screen.every(p=>p.x<0)||screen.every(p=>p.x>viewW)||screen.every(p=>p.y<0)||screen.every(p=>p.y>viewH))return null;return{points:screen,depth:v.reduce((s,p)=>s+p.z,0)/v.length,fill,stroke,kind,label}}
 function rectWall(x,z1,z2,y1,y2,fill,stroke){return quad([{x,y:y1,z:z1},{x,y:y1,z:z2},{x,y:y2,z:z2},{x,y:y2,z:z1}],fill,stroke)}
@@ -183,17 +184,17 @@ function move(dt){
   // WASD 沿展厅固定坐标行走，与当前镜头朝向无关；转向只由方向键和鼠标负责。
   const turnDirection=Number(keys.has('arrowright')||keys.has('turnRight'))-Number(keys.has('arrowleft')||keys.has('turnLeft'));
   camera.yaw+=turnDirection*1.8*dt;
-  let forward=Number(keys.has('w')||keys.has('arrowup')||keys.has('forward'))-Number(keys.has('s')||keys.has('arrowdown')||keys.has('back'));
-  let strafe=Number(keys.has('d')||keys.has('right'))-Number(keys.has('a')||keys.has('left'));
+  let forward=Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown'))+joystick.forward;
+  let strafe=Number(keys.has('d'))-Number(keys.has('a'))+joystick.x;
   if(!forward&&!strafe)return;
-  const length=Math.hypot(forward,strafe);forward/=length;strafe/=length;
+  const length=Math.max(1,Math.hypot(forward,strafe));forward/=length;strafe/=length;
   const nextX=Math.max(-6.2,Math.min(6.2,camera.x+strafe*speed));
   const nextZ=Math.max(.25,Math.min(20.2,camera.z+forward*speed));
   if(!blockedByEntrySign(nextX,nextZ)){camera.x=nextX;camera.z=nextZ}
   else if(!blockedByEntrySign(nextX,camera.z))camera.x=nextX;
   else if(!blockedByEntrySign(camera.x,nextZ))camera.z=nextZ;
 }
-function hasMotion(){return [...keys].some(k=>['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','forward','back','left','right','turnLeft','turnRight'].includes(k))}
+function hasMotion(){return Math.hypot(joystick.x,joystick.forward)>.01||[...keys].some(k=>['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k))}
 function requestRender(){if(!framePending){framePending=true;requestAnimationFrame(frame)}}
 function frame(now){framePending=false;const moving=intro.hidden&&!contentDialog.open&&!indexDialog.open&&!aiDialog.open&&hasMotion();if(moving&&lastDraw&&now-lastDraw<32){requestRender();return}let dt=lastDraw?Math.min((now-lastDraw)/1000,.065):0;lastDraw=now;if(moving)move(dt);ctx.clearRect(0,0,viewW,viewH);let sky=ctx.createLinearGradient(0,0,0,viewH);sky.addColorStop(0,'#b4b0a5');sky.addColorStop(.55,'#b3ada1');sky.addColorStop(1,'#373d3b');ctx.fillStyle=sky;ctx.fillRect(0,0,viewW,viewH);scene();pickFocus();drawMarkers();updateMap();if(moving)requestRender()}
 function toast(message){let el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,2300)}
@@ -249,11 +250,17 @@ window.addEventListener('keydown',e=>{
   }
 });
 window.addEventListener('keyup',e=>{const key=keyboardControls[e.code];if(key)keys.delete(key)});
-window.addEventListener('blur',()=>keys.clear());
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;dragStart={x:e.clientX,y:e.clientY};dragMoved=false;canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointermove',e=>{if(!dragStart||!intro.hidden)return;if(e.pointerType==='mouse'&&!(e.buttons&1)){dragStart=null;return}let dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.hypot(dx,dy)>2){camera.yaw+=dx*.006;dragStart={x:e.clientX,y:e.clientY};dragMoved=true;requestRender()}});
-canvas.addEventListener('pointerup',e=>{if(!dragStart)return;dragStart=null;if(dragMoved){dragMoved=false;return}if(!intro.hidden)return;let p=renderMarkers.filter(m=>Math.hypot(m.x-e.clientX,m.y-e.clientY)<m.radius+13).sort((a,b)=>a.dist-b.dist)[0];if(p){if(p.dist<5.7)activate(p.item);else toast('走近展位后再打开档案')}else if(active)activate(active)});
-canvas.addEventListener('pointercancel',()=>{dragStart=null;dragMoved=false});
-canvas.addEventListener('lostpointercapture',()=>{dragStart=null;dragMoved=false});
-for(const b of document.querySelectorAll('[data-control]')){let k=b.dataset.control;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(k);requestRender()});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>keys.delete(k))}
+const joystickBase=document.getElementById('move-joystick'),joystickThumb=document.getElementById('joystick-thumb');
+function resetJoystick(){joystick.pointerId=null;joystick.x=0;joystick.forward=0;joystickThumb.style.transform='translate(-50%, -50%)';requestRender()}
+function updateJoystick(e){const rect=joystickBase.getBoundingClientRect(),radius=rect.width*.32,dx=e.clientX-(rect.left+rect.width/2),dy=e.clientY-(rect.top+rect.height/2),scale=Math.min(1,radius/Math.max(radius,Math.hypot(dx,dy))),x=dx*scale,y=dy*scale;joystick.x=Math.abs(x/radius)<.08?0:x/radius;joystick.forward=Math.abs(y/radius)<.08?0:-y/radius;joystickThumb.style.transform=`translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;requestRender()}
+joystickBase.addEventListener('pointerdown',e=>{if(joystick.pointerId!==null)return;e.preventDefault();joystick.pointerId=e.pointerId;joystickBase.setPointerCapture(e.pointerId);updateJoystick(e)});
+joystickBase.addEventListener('pointermove',e=>{if(e.pointerId===joystick.pointerId){e.preventDefault();updateJoystick(e)}});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])joystickBase.addEventListener(event,e=>{if(e.pointerId===joystick.pointerId)resetJoystick()});
+window.addEventListener('blur',()=>{keys.clear();resetJoystick();dragStart=null});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();resetJoystick();dragStart=null}});
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0||dragStart)return;dragStart={x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY,pointerId:e.pointerId};dragMoved=false;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!dragStart||e.pointerId!==dragStart.pointerId||!intro.hidden)return;if(e.pointerType==='mouse'&&!(e.buttons&1)){dragStart=null;return}if(!dragMoved&&Math.hypot(e.clientX-dragStart.originX,e.clientY-dragStart.originY)<(e.pointerType==='touch'?8:2))return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;camera.yaw+=dx*.006;if(e.pointerType!=='mouse')camera.pitch=Math.max(-.28,Math.min(.28,camera.pitch-dy/Math.max(300,viewH)*.48));dragStart.x=e.clientX;dragStart.y=e.clientY;dragMoved=true;requestRender()});
+canvas.addEventListener('pointerup',e=>{if(!dragStart||e.pointerId!==dragStart.pointerId)return;dragStart=null;if(dragMoved){dragMoved=false;return}if(!intro.hidden)return;let p=renderMarkers.filter(m=>Math.hypot(m.x-e.clientX,m.y-e.clientY)<m.radius+13).sort((a,b)=>a.dist-b.dist)[0];if(p){if(p.dist<5.7)activate(p.item);else toast('走近展位后再打开档案')}else if(active)activate(active)});
+canvas.addEventListener('pointercancel',e=>{if(e.pointerId===dragStart?.pointerId){dragStart=null;dragMoved=false}});
+canvas.addEventListener('lostpointercapture',e=>{if(e.pointerId===dragStart?.pointerId){dragStart=null;dragMoved=false}});
 
