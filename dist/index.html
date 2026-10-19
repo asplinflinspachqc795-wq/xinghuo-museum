@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#101b22">
   <meta name="description" content="在可自由探索的虚拟展厅中，走近三封红色家书，阅读人物生平、历史线索与资料来源。">
   <title>信火·时空档案｜红色家书互动数字博物馆</title>
-  <link rel="stylesheet" href="styles.css?v=20261019-7">
+  <link rel="stylesheet" href="styles.css?v=20261019-8">
   <link rel="stylesheet" href="ai.css?v=20261019-7">
-  <script defer src="app.js?v=20261019-11"></script>
+  <script defer src="app.js?v=20261019-12"></script>
   <script defer src="card-background-data.js?v=20261019-7"></script>
   <script defer src="ai.js?v=20261019-7"></script>
 </head>
 <body>
   <a class="skip-link" href="#museum-main">跳到展厅</a>
   <main id="museum-main" class="museum-shell">
-    <canvas id="museum-canvas" aria-label="可移动视角的虚拟展厅：W、S 前后移动，A、D 左右平移；鼠标拖动或左右方向键转向，走近展位后点击展品" tabindex="0"></canvas>
+    <canvas id="museum-canvas" aria-label="可移动视角的虚拟展厅：电脑用 WASD 行走、鼠标拖动转视角；手机用左侧摇杆行走，在展厅画面滑动转视角，轻点展品打开" tabindex="0"></canvas>
     <div id="panel-layer" aria-hidden="true"></div>
 
     <header class="topbar">
@@ -34,9 +34,9 @@
 
     <div class="bottom-bar"><button type="button" class="guide-button" id="guide-button"><span aria-hidden="true">⌘</span> 展厅导览</button><div class="control-hint"><span><kbd>W</kbd><kbd>S</kbd> 前后，<kbd>A</kbd><kbd>D</kbd> 左右平移</span><span>鼠标拖动 / 方向键左右转向</span><span><kbd>E</kbd> 打开展品</span></div><button type="button" class="index-button" id="index-button">展品目录 <span aria-hidden="true">☷</span></button></div>
 
-    <div class="touch-controls" aria-label="触屏移动控件"><div class="touch-move"><button type="button" data-control="forward" aria-label="前进">↑</button><div><button type="button" data-control="left" aria-label="左移">←</button><button type="button" data-control="back" aria-label="后退">↓</button><button type="button" data-control="right" aria-label="右移">→</button></div></div><div class="touch-turn"><button type="button" data-control="turnLeft" aria-label="向左转">↶</button><button type="button" data-control="turnRight" aria-label="向右转">↷</button></div></div>
+    <div class="touch-controls" aria-label="触屏操作"><div id="move-joystick" class="move-joystick" role="group" aria-label="拖动摇杆行走"><span class="joystick-ring" aria-hidden="true"></span><span id="joystick-thumb" class="joystick-thumb" aria-hidden="true"></span></div><span class="touch-look-hint">在画面滑动转视角<br>轻点展品打开</span></div>
 
-    <section class="intro-overlay" id="intro" aria-labelledby="intro-title"><div class="intro-backdrop"></div><div class="intro-card"><div class="intro-mark">✦</div><p class="eyebrow">INTERACTIVE DIGITAL MUSEUM / 2026</p><h2 id="intro-title">走进家书，<br><em>走近写信的人。</em></h2><p>这不是按页滚动的资料陈列。你可以在虚拟展厅中移动视角，走近三封家书，点开书信、人物生平与时代线索。</p><div class="intro-stats"><span><b>03</b> 封家书</span><span><b>03</b> 组人物档案</span><span><b>01</b> 条时间线</span></div><button type="button" id="enter-button" class="enter-button">进入展厅 <span aria-hidden="true">↗</span></button><small>先从右侧向前参观。W/S 前后走、A/D 左右走；鼠标拖动或方向键左右转向。右上角可体验互动导览与小游戏。开场背景为 AI 生成示意图，虚拟展厅不是历史场景复原。</small></div><div class="intro-side-label" aria-hidden="true">LETTERS ACROSS TIME · 1928—1949</div></section>
+    <section class="intro-overlay" id="intro" aria-labelledby="intro-title"><div class="intro-backdrop"></div><div class="intro-card"><div class="intro-mark">✦</div><p class="eyebrow">INTERACTIVE DIGITAL MUSEUM / 2026</p><h2 id="intro-title">走进家书，<br><em>走近写信的人。</em></h2><p>这不是按页滚动的资料陈列。你可以在虚拟展厅中移动视角，走近三封家书，点开书信、人物生平与时代线索。</p><div class="intro-stats"><span><b>03</b> 封家书</span><span><b>03</b> 组人物档案</span><span><b>01</b> 条时间线</span></div><button type="button" id="enter-button" class="enter-button">进入展厅 <span aria-hidden="true">↗</span></button><small>先从右侧向前参观。电脑：W/S 前后走、A/D 左右走，鼠标拖动转视角。手机：左下摇杆行走，在画面滑动转视角、轻点展品打开。右上角可体验互动导览与小游戏。开场背景为 AI 生成示意图，虚拟展厅不是历史场景复原。</small></div><div class="intro-side-label" aria-hidden="true">LETTERS ACROSS TIME · 1928—1949</div></section>
 
     <dialog id="content-dialog" class="content-dialog" aria-labelledby="dialog-title"><div class="dialog-layout"><button class="dialog-close" type="button" id="dialog-close" aria-label="关闭弹窗">×</button><div class="dialog-aside"><span class="eyebrow" id="dialog-kicker"></span><div class="visual-switch" id="visual-switch"><button type="button" data-visual="historical" aria-pressed="true">史料展图</button><button type="button" data-visual="portrait" aria-pressed="false">人物照片</button></div><div class="document-art"><img id="dialog-image" alt="" decoding="async"><div id="image-fallback" hidden>本地图片未能载入，请查看资源目录并核对出处。</div></div><div class="image-pages" id="image-pages"><button type="button" id="image-prev" aria-label="上一页">←</button><span id="image-count"></span><button type="button" id="image-next" aria-label="下一页">→</button></div><p id="dialog-art-note"></p><a id="dialog-image-source" target="_blank" rel="noopener noreferrer">查看图片出处 ↗</a></div><div class="dialog-main"><p class="eyebrow" id="dialog-category"></p><h2 id="dialog-title"></h2><p class="dialog-subtitle" id="dialog-subtitle"></p><div class="dialog-tabs" role="tablist" aria-label="档案内容"><button type="button" role="tab" data-tab="letter" aria-selected="true">家书解读</button><button type="button" role="tab" data-tab="bio" aria-selected="false">人物生平</button><button type="button" role="tab" data-tab="sources" aria-selected="false">资料核验</button></div><div id="dialog-panel" class="dialog-panel" role="tabpanel"></div><div class="dialog-bottom"><div><button type="button" id="mark-visited" class="mark-button">标记已阅 <span aria-hidden="true">✓</span></button><button type="button" id="exhibit-ai-button" class="ai-inline-button">互动讲解 / 游戏 ↗</button></div><span>按 Esc 返回展厅</span></div></div></div></dialog>
 
