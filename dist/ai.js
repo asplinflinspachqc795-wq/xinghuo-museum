@@ -1,0 +1,62 @@
+// 互动体验：路线与讲解为人工核对后的预置策展内容；AI 图片仅作非史料视觉素材。
+const aiState={route:null,stage:0,games:{image:null,timeline:null,source:null},timelinePick:[],summary:''};
+const $ai=id=>document.getElementById(id);
+const cardBackground=new Image();
+cardBackground.src=window.CARD_BACKGROUND_DATA||'assets/card-background-ai.png';
+
+function aiBadge(text='策展资料 · 已核对'){const badge=document.createElement('span');badge.className='ai-mode';badge.textContent=text;return badge}
+function aiSources(target,keys){const unique=[...new Set(keys)].filter(key=>exhibits[key]);if(!unique.length)return;const wrap=document.createElement('div');wrap.className='ai-sources';wrap.append(document.createTextNode('核对资料：'));unique.forEach((key,index)=>{if(index)wrap.append(document.createTextNode(' · '));const [name,url]=exhibits[key].sources[0],link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.textContent=name;wrap.append(link)});target.append(wrap)}
+function aiTextResult(target,text,keys=[],badgeText){target.replaceChildren();target.append(aiBadge(badgeText));const output=document.createElement('div');output.className='ai-output';output.textContent=text;target.append(output);aiSources(target,keys)}
+function aiSelectTab(tab){for(const button of document.querySelectorAll('[data-ai-tab]'))button.setAttribute('aria-current',button.dataset.aiTab===tab?'page':'false');for(const section of document.querySelectorAll('[data-ai-section]'))section.hidden=section.dataset.aiSection!==tab;if(tab==='quiz')aiRenderGame()}
+function aiOpen(tab='route',key=null){if(contentDialog.open)closeDialog(contentDialog);if(indexDialog.open)closeDialog(indexDialog);keys.clear();if(key)$ai('ai-exhibit-select').value=key;if(!aiDialog.open)showDialog(aiDialog);aiSelectTab(tab)}
+
+function aiRoute(audience,interest,duration){let order=interest==='女性人物经历'?['zhao','jiang','chen']:interest==='史料真假与来源'?['jiang','chen','zhao']:['chen','zhao','jiang'];if(duration<=5)order=order.slice(0,2);const titles={'家书里的亲情':'写给亲人的话','女性人物经历':'她们留下的话','史料真假与来源':'从图片到证据','时代时间线':'沿着年份读家书'};return{title:titles[interest],order,text:`${audience} · ${duration} 分钟 · ${interest}。先看${exhibits[order[0]].title}，再按下方顺序参观。每个展位都可以查看人物经历与“资料核验”，请留意原件、复制件、誊写件的区别。`}}
+function aiRenderRoute(route){const target=$ai('ai-route-result');aiTextResult(target,`${route.title}\n${route.text}`,route.order,'按兴趣推荐 · 参观路线');const list=document.createElement('div');list.className='ai-route-list';route.order.forEach((key,index)=>{const button=document.createElement('button');button.type='button';button.className='ai-route-card';const name=document.createElement('span');name.textContent=`${String(index+1).padStart(2,'0')}  ${exhibits[key].title} · ${exhibits[key].year}`;const action=document.createElement('strong');action.textContent='前往展位 ↗';button.append(name,action);button.addEventListener('click',()=>{closeDialog(aiDialog);intro.hidden=true;jump(stations.find(station=>station.key===key))});list.append(button)});target.append(list)}
+function aiMakeRoute(){const route=aiRoute($ai('ai-audience').value,$ai('ai-interest').value,Number($ai('ai-duration').value));aiState.route=route;aiRenderRoute(route)}
+
+function aiExplain(key,style){const item=exhibits[key];if(style==='儿童故事版')return`这是写给亲人的一封信。${item.brief} 我们读到的是经过资料核对的讲解，不是写信人的原话。读完可以想一想：${item.question}`;if(style==='学生史料版')return`${item.date}，${item.relation}。${item.letter}\n核验重点：${item.image}`;if(style==='设计传播版')return`本展把“写给谁—人物经历—图像身份”放在同一个展位。${item.brief}\n展示时必须说明：${item.image} 这样才能避免将复制件或誊写件误认成亲笔原件。`;return`${item.brief}\n${item.letter}\n观展问题：${item.question}`}
+function aiMakeExplain(){const key=$ai('ai-exhibit-select').value,style=$ai('ai-explain-style').value;aiTextResult($ai('ai-explain-result'),aiExplain(key,style),[key],'分层讲解 · 策展整理')}
+
+function gameButton(text,onClick,extraClass='ai-primary'){const button=document.createElement('button');button.type='button';button.className=extraClass;button.textContent=text;button.addEventListener('click',onClick);return button}
+function aiGameProgress(box,title){const meta=document.createElement('div');meta.className='ai-quiz-meta';meta.textContent=`关卡 ${aiState.stage+1} / 3 · ${title}`;box.append(meta)}
+function aiRenderGame(){const box=$ai('ai-quiz-box');box.replaceChildren();const stage=aiState.stage;
+  if(stage===0){aiGameProgress(box,'识别 AI 情境图');const question=document.createElement('h4');question.textContent='哪张图片是 AI 创作的示意图，不能当作真实历史照片或文物？';box.append(question);const grid=document.createElement('div');grid.className='ai-image-game';[['ai','assets/ai-gallery-concept.png','图 A'],['source','assets/historical/jiang-zhuyun-letter.jpg','图 B']].forEach(([kind,src,label])=>{const button=document.createElement('button');button.type='button';button.className='ai-image-choice';const img=document.createElement('img');img.src=src;img.alt=label==='图 A'?'深色虚拟展厅情境画面':'江竹筠亲笔遗书馆藏展图';const caption=document.createElement('span');caption.textContent=`${label} · 点击选择`;button.append(img,caption);button.addEventListener('click',()=>{if(aiState.games.image!==null)return;aiState.games.image=kind==='ai';for(const choice of grid.querySelectorAll('button'))choice.disabled=true;button.classList.add(kind==='ai'?'correct':'wrong');const note=document.createElement('div');note.className='ai-quiz-feedback';note.textContent=`${kind==='ai'?'答对了。':'再核对一下。'}图 A 是 AI 生成的虚拟展厅示意图；图 B 是重庆中国三峡博物馆公开的江竹筠亲笔遗书馆藏展图。AI 场景不能冒充史料。`;box.append(note);aiSources(box,['jiang']);box.append(gameButton('进入下一关',()=>{aiState.stage=1;aiRenderGame()}))});grid.append(button)});box.append(grid);return}
+  if(stage===1){aiGameProgress(box,'排列家书时间线');const question=document.createElement('h4');question.textContent='请按年份从早到晚，依次点击三封家书。';box.append(question);const chosen=document.createElement('div');chosen.className='ai-timeline-selected';chosen.textContent=aiState.timelinePick.length?`已选择：${aiState.timelinePick.map(key=>exhibits[key].year+' '+exhibits[key].title).join(' → ')}`:'尚未选择';box.append(chosen);const grid=document.createElement('div');grid.className='ai-timeline-game';for(const key of ['zhao','jiang','chen']){const button=gameButton(`${exhibits[key].year} · ${exhibits[key].title}`,()=>{if(aiState.games.timeline!==null)return;aiState.timelinePick.push(key);button.disabled=true;button.classList.add('selected');chosen.textContent=`已选择：${aiState.timelinePick.map(id=>exhibits[id].year+' '+exhibits[id].title).join(' → ')}`;if(aiState.timelinePick.length===3){aiState.games.timeline=aiState.timelinePick.join(',')==='chen,zhao,jiang';const note=document.createElement('div');note.className='ai-quiz-feedback';note.textContent=`${aiState.games.timeline?'排序正确。':'顺序还不对。'}正确顺序是陈觉 1928 → 赵一曼 1936 → 江竹筠 1949。时间线表示写信或留信的年代，不表示三人曾直接往来。`;box.append(note);box.append(gameButton('进入最后一关',()=>{aiState.stage=2;aiRenderGame()}))}},'ai-route-card');grid.append(button)}box.append(grid);box.append(gameButton('重新选择',()=>{aiState.timelinePick=[];aiState.games.timeline=null;aiRenderGame()},'ai-secondary'));return}
+  if(stage===2){aiGameProgress(box,'辨别展图身份');const question=document.createElement('h4');question.textContent='关于“赵一曼遗书相关展图”，下列哪句话最严谨？';box.append(question);const choices=document.createElement('div');choices.className='ai-quiz-choices';['展图只要出现在网页上，就一定是赵一曼亲笔原件。','要核对图片出处与说明，不能仅凭展图认定是亲笔原件。','AI 可以补画缺失的笔迹，再当作原件展示。'].forEach((text,index)=>{const button=gameButton(`${String.fromCharCode(65+index)}. ${text}`,()=>{if(aiState.games.source!==null)return;aiState.games.source=index===1;for(const choice of choices.children)choice.disabled=true;button.classList.add(index===1?'correct':'wrong');const note=document.createElement('div');note.className='ai-quiz-feedback';note.textContent=`${index===1?'判断正确。':'应重新核对图像身份。'}赵一曼相关展图涉及后人誊写版本，不能直接当作本人亲笔原件。AI 补画更不能变成历史证据。`;box.append(note);aiSources(box,['zhao']);box.append(gameButton('查看游戏成绩',()=>{aiState.stage=3;aiRenderGame()}))},'ai-choice');choices.append(button)});box.append(choices);return}
+  const score=aiGameScore();aiTextResult(box,`已完成 3 个小游戏，答对 ${score} / 3 关。游戏使用了 AI 创作情境图；史料图片与判定依据见“资料核验”。现在可以生成参观小结和纪念卡。`,['zhao','jiang'],'互动游戏 · 成绩已记录');box.append(gameButton('重新开始',()=>{aiState.stage=0;aiState.games={image:null,timeline:null,source:null};aiState.timelinePick=[];aiRenderGame()},'ai-secondary'))
+}
+function aiGameScore(){return Object.values(aiState.games).filter(value=>value===true).length}
+function aiGameCompleted(){return Object.values(aiState.games).filter(value=>value!==null).length}
+
+function aiSummary(){const visited=[...read].filter(key=>exhibits[key]).map(key=>exhibits[key].title),route=aiState.route?.title||'自由参观',completed=aiGameCompleted();return`路线：${route}。已阅家书：${visited.length?visited.join('、'):'尚未标记'}。AI 图像与史料辨识小游戏：完成 ${completed} / 3 关，答对 ${aiGameScore()} 关。建议继续打开每件展品的“资料核验”页，核对书信图片的身份与出处。本小结根据你的参观记录整理。`}
+async function aiPrepareBackground(){if(cardBackground.complete&&cardBackground.naturalWidth)return true;try{await cardBackground.decode();return true}catch(_){return false}}
+async function aiRenderCard(){
+  const canvas=$ai('ai-card-canvas'),g=canvas.getContext('2d'),w=canvas.width,h=canvas.height,hasArt=await aiPrepareBackground();
+  g.clearRect(0,0,w,h);
+  if(hasArt){const crop=Math.max(w/cardBackground.naturalWidth,h/cardBackground.naturalHeight),iw=cardBackground.naturalWidth*crop,ih=cardBackground.naturalHeight*crop;g.drawImage(cardBackground,(w-iw)/2,(h-ih)/2,iw,ih)}
+  else{g.fillStyle='#112a31';g.fillRect(0,0,w,h)}
+  const wash=g.createLinearGradient(0,0,w,0);
+  wash.addColorStop(0,'rgba(7,25,32,.94)');wash.addColorStop(.55,'rgba(7,25,32,.76)');wash.addColorStop(.78,'rgba(7,25,32,.08)');wash.addColorStop(1,'rgba(7,25,32,0)');g.fillStyle=wash;g.fillRect(0,0,w,h);
+  g.strokeStyle='#d5b376';g.lineWidth=4;g.strokeRect(38,38,w-76,h-76);g.strokeStyle='rgba(213,179,118,.55)';g.lineWidth=1;g.strokeRect(55,55,w-110,h-110);
+  g.textBaseline='alphabetic';g.fillStyle='#d8b77b';g.font='600 27px Microsoft YaHei,sans-serif';g.fillText('信火 · 时空档案  /  DIGITAL MUSEUM',100,122);
+  g.fillStyle='#fff3dc';g.font='700 82px Microsoft YaHei,sans-serif';g.fillText('参观纪念卡',100,245);
+  g.fillStyle='#ecd6ac';g.font='36px Microsoft YaHei,sans-serif';g.fillText(aiState.route?.title||'一封家书，一段未尽的讲述',102,320);
+  g.strokeStyle='#d5b376';g.lineWidth=2;g.beginPath();g.moveTo(102,365);g.lineTo(880,365);g.stroke();
+  const stats=[['已阅家书',`${read.size} / 3`],['小游戏',`${aiGameScore()} / 3`],['探索称号','家书寻迹者']];
+  stats.forEach(([label,value],index)=>{const x=104+index*250;g.fillStyle='#c5b89d';g.font='25px Microsoft YaHei,sans-serif';g.fillText(label,x,428);g.fillStyle='#fff0cc';g.font='700 38px Microsoft YaHei,sans-serif';g.fillText(value,x,483)});
+  g.fillStyle='#e9e0cf';g.font='26px Microsoft YaHei,sans-serif';const viewed=[...read].filter(key=>exhibits[key]).map(key=>exhibits[key].title).join('、')||'等待继续探索';wrapText(g,`我走近了：${viewed}。每一张图片都有身份，每一封家书都有出处。`,103,565,790,43,3);
+  g.fillStyle='#d3bd91';g.font='21px Microsoft YaHei,sans-serif';g.fillText('AI 插画背景仅作视觉创作 · 不代表真实历史场景或文物',100,804);g.textAlign='right';g.fillText(new Date().toLocaleDateString('zh-CN'),1498,804);g.textAlign='left';canvas.hidden=false;return hasArt
+}
+async function aiMakeSummary(){aiState.summary=aiSummary();aiTextResult($ai('ai-summary-result'),aiState.summary,[...read],'参观记录 · 个性化整理');const artReady=await aiRenderCard();$ai('ai-card-download').disabled=false;if(!artReady){const note=document.createElement('p');note.className='ai-asset-warning';note.textContent='AI 背景图未载入，纪念卡已使用备用底色；请确认 assets/card-background-ai.png 存在。';$ai('ai-summary-result').append(note)}}
+function aiDownloadCard(){const canvas=$ai('ai-card-canvas');if(canvas.hidden)return;const link=document.createElement('a');link.href=canvas.toDataURL('image/png');link.download='信火-参观纪念卡.png';link.click()}
+
+$ai('ai-button').addEventListener('click',()=>aiOpen());
+$ai('exhibit-ai-button').addEventListener('click',()=>aiOpen('explain',modalSource));
+$ai('ai-close').addEventListener('click',()=>closeDialog(aiDialog));
+aiDialog.addEventListener('click',event=>{if(event.target===aiDialog)closeDialog(aiDialog)});
+aiDialog.addEventListener('close',()=>{lastDraw=0;requestRender()});
+for(const button of document.querySelectorAll('[data-ai-tab]'))button.addEventListener('click',()=>aiSelectTab(button.dataset.aiTab));
+$ai('ai-route-generate').addEventListener('click',aiMakeRoute);
+$ai('ai-explain-generate').addEventListener('click',aiMakeExplain);
+$ai('ai-summary-generate').addEventListener('click',aiMakeSummary);
+$ai('ai-card-download').addEventListener('click',aiDownloadCard);
