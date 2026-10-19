@@ -180,16 +180,15 @@ function updateMap(){let e=document.getElementById('map-you');e.style.left=`${Ma
 function blockedByEntrySign(x,z){return Math.abs(x-entrySign.x)<entrySign.clearanceX&&Math.abs(z-entrySign.z)<entrySign.clearanceZ}
 function move(dt){
   const speed=(keys.has('shift')?5:3.25)*dt;
-  // 只有方向键左右和触屏转向按钮能改变朝向；A/D 始终是左右平移。
+  // WASD 沿展厅固定坐标行走，与当前镜头朝向无关；转向只由方向键和鼠标负责。
   const turnDirection=Number(keys.has('arrowright')||keys.has('turnRight'))-Number(keys.has('arrowleft')||keys.has('turnLeft'));
   camera.yaw+=turnDirection*1.8*dt;
   let forward=Number(keys.has('w')||keys.has('arrowup')||keys.has('forward'))-Number(keys.has('s')||keys.has('arrowdown')||keys.has('back'));
   let strafe=Number(keys.has('d')||keys.has('right'))-Number(keys.has('a')||keys.has('left'));
   if(!forward&&!strafe)return;
   const length=Math.hypot(forward,strafe);forward/=length;strafe/=length;
-  const sin=Math.sin(camera.yaw),cos=Math.cos(camera.yaw);
-  const nextX=Math.max(-6.2,Math.min(6.2,camera.x+(sin*forward+cos*strafe)*speed));
-  const nextZ=Math.max(.25,Math.min(20.2,camera.z+(cos*forward-sin*strafe)*speed));
+  const nextX=Math.max(-6.2,Math.min(6.2,camera.x+strafe*speed));
+  const nextZ=Math.max(.25,Math.min(20.2,camera.z+forward*speed));
   if(!blockedByEntrySign(nextX,nextZ)){camera.x=nextX;camera.z=nextZ}
   else if(!blockedByEntrySign(nextX,camera.z))camera.x=nextX;
   else if(!blockedByEntrySign(camera.x,nextZ))camera.z=nextZ;
@@ -257,3 +256,4 @@ canvas.addEventListener('pointerup',e=>{if(!dragStart)return;dragStart=null;if(d
 canvas.addEventListener('pointercancel',()=>{dragStart=null;dragMoved=false});
 canvas.addEventListener('lostpointercapture',()=>{dragStart=null;dragMoved=false});
 for(const b of document.querySelectorAll('[data-control]')){let k=b.dataset.control;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(k);requestRender()});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>keys.delete(k))}
+
