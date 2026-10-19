@@ -181,15 +181,16 @@ function updateMap(){let e=document.getElementById('map-you');e.style.left=`${Ma
 function blockedByEntrySign(x,z){return Math.abs(x-entrySign.x)<entrySign.clearanceX&&Math.abs(z-entrySign.z)<entrySign.clearanceZ}
 function move(dt){
   const speed=(keys.has('shift')?5:3.25)*dt;
-  // WASD 沿展厅固定坐标行走，与当前镜头朝向无关；转向只由方向键和鼠标负责。
+  // 行走跟随当前视角：W/S 或摇杆上下为视线前后，A/D 或摇杆左右为侧向平移；只有方向键和拖动会转向。
   const turnDirection=Number(keys.has('arrowright')||keys.has('turnRight'))-Number(keys.has('arrowleft')||keys.has('turnLeft'));
   camera.yaw+=turnDirection*1.8*dt;
   let forward=Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown'))+joystick.forward;
   let strafe=Number(keys.has('d'))-Number(keys.has('a'))+joystick.x;
   if(!forward&&!strafe)return;
   const length=Math.max(1,Math.hypot(forward,strafe));forward/=length;strafe/=length;
-  const nextX=Math.max(-6.2,Math.min(6.2,camera.x+strafe*speed));
-  const nextZ=Math.max(.25,Math.min(20.2,camera.z+forward*speed));
+  const sin=Math.sin(camera.yaw),cos=Math.cos(camera.yaw);
+  const nextX=Math.max(-6.2,Math.min(6.2,camera.x+(sin*forward+cos*strafe)*speed));
+  const nextZ=Math.max(.25,Math.min(20.2,camera.z+(cos*forward-sin*strafe)*speed));
   if(!blockedByEntrySign(nextX,nextZ)){camera.x=nextX;camera.z=nextZ}
   else if(!blockedByEntrySign(nextX,camera.z))camera.x=nextX;
   else if(!blockedByEntrySign(camera.x,nextZ))camera.z=nextZ;
