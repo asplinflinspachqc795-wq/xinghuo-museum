@@ -21,3 +21,13 @@
 #panel-layer{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 #panel-layer canvas{position:absolute;left:0;top:0;transform-origin:0 0;backface-visibility:hidden;image-rendering:auto}
 @media(max-width:650px){.dialog-layout{display:flex;flex-direction:column}.dialog-aside{display:flex;padding:17px 22px 15px}.dialog-aside>.eyebrow{font-size:9px}.visual-switch{margin-top:9px}.document-art{min-height:180px;max-height:32vh;margin:9px 0}.document-art img{max-height:29vh}.dialog-aside>p,#dialog-image-source{font-size:10px}.dialog-main{max-height:none;overflow:visible;padding:17px 23px 22px}.content-dialog{overflow-y:auto;max-height:90vh}.dialog-close{top:9px;right:9px;background:#efe9dd}.dialog-panel{min-height:0}}
+
+/* Touch navigation: an analog walking stick and a free-look canvas. */
+.move-joystick{position:relative;width:116px;height:116px;border-radius:50%;background:radial-gradient(circle,#22363aba 0 28%,#111f25df 72%);border:1px solid #d4b980a6;box-shadow:0 8px 28px #0009,inset 0 0 20px #ccb47c22;touch-action:none;pointer-events:auto;user-select:none;-webkit-user-select:none}
+.joystick-ring{position:absolute;inset:18px;border:1px solid #d4b98055;border-radius:50%;pointer-events:none}
+.joystick-thumb{position:absolute;left:50%;top:50%;width:49px;height:49px;border:1px solid #f1d49c;background:radial-gradient(circle at 35% 30%,#aa8c5d,#4c5147 80%);border-radius:50%;box-shadow:0 3px 12px #000b;transform:translate(-50%,-50%);pointer-events:none}
+.touch-look-hint{align-self:flex-end;margin-bottom:24px;padding:7px 10px;color:#f2e5c6;background:#122129bd;border:1px solid #e1c68a77;border-radius:4px;font-size:11px;line-height:1.55;text-align:center;letter-spacing:.04em;pointer-events:none}
+@media (pointer:coarse){#museum-canvas{touch-action:none;cursor:default}.touch-controls{display:flex;left:16px;right:16px;bottom:calc(75px + env(safe-area-inset-bottom));align-items:flex-end;justify-content:space-between;pointer-events:none}.bottom-bar{padding-bottom:env(safe-area-inset-bottom)}}
+@media(max-width:650px){.touch-controls{left:16px;right:16px;bottom:calc(74px + env(safe-area-inset-bottom));align-items:flex-end;justify-content:space-between;pointer-events:none}.focus-prompt{bottom:calc(206px + env(safe-area-inset-bottom))}.minimap{bottom:calc(175px + env(safe-area-inset-bottom))}.touch-look-hint{max-width:115px}}
+@media(max-width:370px){.move-joystick{width:102px;height:102px}.joystick-thumb{width:44px;height:44px}.touch-look-hint{font-size:10px;max-width:104px}}
+
